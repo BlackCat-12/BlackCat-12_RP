@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ce6fa6b262f8242925472c930ff2ee, type: 3}
+  m_Name: Custom Pixel Render Pipeline Asset
+  m_EditorClassIdentifier: 
+  useDynamicBatching: 0
+  useGPUInstancing: 0
+  useSRPBatching: 1
+  shadowSetting:
+    maxDistance: 200
+    distanceFade: 0.19
+    directional:
+      atlasSize: 1024
+      filter: 1
+      cascadeCount: 4
+      cascadeRatio1: 0.1
+      cascadeRatio2: 0.25
+      cascadeRatio3: 0.5
+      cascadeFade: 0.1
+      cascadeBlend: 1
+  postFXSettings: {fileID: 11400000, guid: 9f8afcc33b72a714c88253518d44412e, type: 2}
