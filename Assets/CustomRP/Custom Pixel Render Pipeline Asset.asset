@@ -12,9 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8ce6fa6b262f8242925472c930ff2ee, type: 3}
   m_Name: Custom Pixel Render Pipeline Asset
   m_EditorClassIdentifier: 
-  useDynamicBatching: 0
-  useGPUInstancing: 0
-  useSRPBatching: 1
+  batchingSettings:
+    useDynamicBatching: 0
+    useGPUInstancing: 0
+    useSRPBatching: 0
+  deferredRenderingSettings:
+    useDeferredRender: 0
+    specularIBL: {fileID: 8900000, guid: 3474b9361980d13488abb7e6ffe9f430, type: 3}
+    diffuseIBL: {fileID: 8900000, guid: 89c03f6ca26bd284b87ce94fdc04f8c2, type: 3}
+    BRDFLUT: {fileID: 2800000, guid: f41ac00e7beb23f418b32a52b47557b1, type: 3}
   shadowSetting:
     maxDistance: 200
     distanceFade: 0.19
@@ -27,4 +33,6 @@ MonoBehaviour:
       cascadeRatio3: 0.5
       cascadeFade: 0.1
       cascadeBlend: 1
-  postFXSettings: {fileID: 11400000, guid: 9f8afcc33b72a714c88253518d44412e, type: 2}
+  postFXSettings:
+    usePostFx: 1
+    PostFXSettings: {fileID: 11400000, guid: 9f8afcc33b72a714c88253518d44412e, type: 2}

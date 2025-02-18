@@ -13,7 +13,6 @@ MonoBehaviour:
   m_Name: Post FX Settings
   m_EditorClassIdentifier: 
   _shader: {fileID: 4800000, guid: 9c16ca8f758dbaf4ca451544caf5d19d, type: 3}
-  needDepthNormalTex: 1
   bloom:
     maxIteration: 2
     downScaleLimit: 1

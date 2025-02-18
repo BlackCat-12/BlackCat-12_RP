@@ -13,27 +13,53 @@ public partial class CameraRenderer
     private CullingResults _cullingResults;
     private CommandBuffer _buffer = new CommandBuffer { name = bufferName };
     
+    private bool _usePostFX = false, _useForwardRD = true, _useDeferredRD = false;
+    
     // 实例化脚本
-    PostFXStack postFXStack = new PostFXStack();
+    private PostFXStack _postFXStack = new PostFXStack();
     private Lighting _lighting = new Lighting();
     private RenderPostFX_PrePass _renderPostFXPrePass = new RenderPostFX_PrePass();
     private VolumeManager _volumeManager = VolumeManager.instance;
+    private DeferredRender _deferredRender = new DeferredRender();
     
     // Shader相关属性
-    private static int frameBufferId = Shader.PropertyToID("_CameraFrameBuffer"),
-        depthNormalTex = Shader.PropertyToID("_DepthNormalTex");
-
+    private static int frameBufferId = Shader.PropertyToID("_CameraFrameBuffer");
     private static ShaderTagId unlitShaderTagId = new ShaderTagId("SRPDefaultUnlit"),
         litShaderTagId = new ShaderTagId("CustomLit"),
         ToonTag = new ShaderTagId("ToonTag");
         
     public void Render(ScriptableRenderContext context, Camera camera,  bool useDynamicBatching, bool useGPUInstancing, 
-         ShadowSetting shadowSetting, PostFXSettings postFXSettings)
+         ShadowSetting shadowSetting, PostFXUI postFXSettings, DeferredRenderingSettings deferredRenderingSettings)
     {
-        this._context = context;
-        this._camera = camera;
-        bool usePostFX = _volumeManager.CheckEffectActive();
+        _context = context;
+        _camera = camera;
         
+        PreSetup(shadowSetting, deferredRenderingSettings, postFXSettings);
+        // 初始化配置阶段
+        MainSetup(shadowSetting, postFXSettings.PostFXSettings);
+        
+        // 渲染阶段
+        // 后处理准备阶段
+        if (_useDeferredRD)
+        {
+            RenderDeferred();
+        }else if (_usePostFX)
+        {
+            RenderPostFX(useDynamicBatching, useGPUInstancing);
+        }
+        else
+        {
+            RenderForward(useDynamicBatching, useGPUInstancing);
+        }
+        
+        // 清除释放资源阶段
+        Cleanup();
+        Submit();
+    }
+
+    private void PreSetup(ShadowSetting shadowSetting, DeferredRenderingSettings deferredRenderingSettings, 
+        PostFXUI postFxui)
+    {
         PrepareBuffer();
         // 绘制UI等
         PrepareForSceneWindow();
@@ -43,45 +69,36 @@ public partial class CameraRenderer
         {
             return;
         }
-        
-        // 初始化配置阶段
-            // 运行时初始化设置
-            _buffer.BeginSample(bufferName);
-            ExecuteBuffer();
-            _lighting.Setup(_context, _cullingResults, shadowSetting);
-            _buffer.EndSample(bufferName);
-            
-        _renderPostFXPrePass.Setup(context ,camera);
-        postFXStack.Setup(context, camera, postFXSettings);
-        
-        Setup();
-        
-        // 渲染阶段
-            // 后处理准备阶段
-            // TODO: 后处理准备阶段
-            if (usePostFX && postFXStack.isActive) // 只有当至少一个effect启动，且场景开启后处理选择
-            {
-                _renderPostFXPrePass.Render(ref _cullingResults, _volumeManager.GetPostFXPrePasses());
-                SwitchRenderTarget(frameBufferId);
-            }
-            // 进行常规绘制渲染；若开启后处理，则结果将渲染到中间纹理上
-            DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
-            DrawUnsupportedShaders();
-            DrawGizmosBeforePostFX();
 
-            // 若开启了后处理，则将摄像机渲染结果传入，进行渲染
-            if (usePostFX && postFXStack.isActive)
-            {
-                postFXStack.Render(frameBufferId);
-            }
-            DrawGizmosAfterPostFX();
-        
-        // 清除释放资源阶段
-            Cleanup();
-            Submit();
+        _usePostFX = _volumeManager.CheckEffectActive() && postFxui.usePostFx;
+        _useDeferredRD = deferredRenderingSettings.useDeferredRender;
     }
+    
+    private void MainSetup(ShadowSetting shadowSetting, PostFXSettings postFXSettings)
+    {
+        _context.SetupCameraProperties(_camera);  // 将摄像机属性应用到渲染上下文
+        
+        _buffer.BeginSample(bufferName);
+        _lighting.Setup(_context, _cullingResults, shadowSetting);
+        _buffer.EndSample(bufferName);
+        ExecuteBuffer();
+        
+        if (_useDeferredRD)
+        {
+            _deferredRender.Setup(_context, _camera);
+        }else if (_usePostFX)
+        {
+            _renderPostFXPrePass.Setup(_context ,_camera);
+            _postFXStack.Setup(_context, _camera, postFXSettings);
+        }
+        else
+        {
+            SetupForwardRD();
+        }
+    }
+    
     // 渲染初始化，清除渲染缓存，开始采样 
-    private void Setup()
+    private void SetupForwardRD()
     {
         // 后处理准备
         _buffer.BeginSample(SampleName);
@@ -89,33 +106,47 @@ public partial class CameraRenderer
         // 获取Camera的清除标志
         CameraClearFlags flags = _camera.clearFlags;
         
-        // 若开启后处理，则将中间纹理设置为Camera的渲染目标
-        if (_volumeManager.CheckEffectActive() && postFXStack.isActive)
-        {
-            // 清除中间缓存区的原内容
-            if (flags > CameraClearFlags.Color)
-            {
-                flags = CameraClearFlags.Color;
-            }
-            // 为nameId创建存储摄像机输出的RT
-            _buffer.GetTemporaryRT(frameBufferId, _camera.pixelWidth, _camera.pixelHeight, 
-                32, FilterMode.Point, RenderTextureFormat.Default);
-        }
-        // 清除摄像机缓存区的缓存
-        _buffer.ClearRenderTarget(
-            flags <= CameraClearFlags.Depth,
-            flags <= CameraClearFlags.Color,
-            flags == CameraClearFlags.Color ?
-                _camera.backgroundColor.linear : Color.clear
-        );
+ 
         ExecuteBuffer();
     }
+
+    void RenderPostFX(bool useDynamicBatching, bool useGPUInstancing)
+    {
+      
+        _renderPostFXPrePass.Render(ref _cullingResults, _volumeManager.GetPostFXPrePasses());
+        SwitchRenderTarget(PostFXStack.frameBufferId);
+        
+        // 进行常规绘制渲染；若开启后处理，则结果将渲染到中间纹理上
+        DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
+        DrawUnsupportedShaders();
+        DrawGizmosBeforePostFX();
+
+        // 若开启了后处理，则将摄像机渲染结果传入，进行渲染
+    
+        _postFXStack.Render(PostFXStack.frameBufferId);
+        
+        DrawGizmosAfterPostFX();
+    }
+
+    void RenderDeferred()
+    {
+        _deferredRender.Render();
+    }
+    void RenderForward(bool useDynamicBatching, bool useGPUInstancing)
+    {
+        _buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+        ExecuteBuffer();
+        DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
+    }
+    
+    
     // 将缓存中的指令提交
     void Submit () {
         _buffer.EndSample(SampleName);
         ExecuteBuffer();
         _context.Submit();
     }
+    
     // 绘制可见的几何体
     void DrawVisibleGeometry(bool useDynamicBatching, bool useGPUInstancing)
     {
@@ -155,7 +186,7 @@ public partial class CameraRenderer
         _context.ExecuteCommandBuffer(_buffer);
         _buffer.Clear();
     }
-
+    
     // 切换渲染目标
     void SwitchRenderTarget(int colorTarget)
     {
@@ -184,11 +215,15 @@ public partial class CameraRenderer
     void Cleanup()
     {
         _lighting.Cleanup();
-        if (_volumeManager.CheckEffectActive() && postFXStack.isActive)
+        if (_usePostFX)
         {
-            postFXStack.Cleanup();
+            _postFXStack.Cleanup();
             _renderPostFXPrePass.Cleanup();
-            _buffer.ReleaseTemporaryRT(frameBufferId);
+        }
+
+        if (_useDeferredRD)
+        {
+            _deferredRender.CleanUp();
         }
     }
 }

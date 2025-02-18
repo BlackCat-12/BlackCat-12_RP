@@ -10,8 +10,7 @@ public class PostFXSettings : ScriptableObject
 {
     [SerializeField] private Shader _shader = default;
     [System.NonSerialized] private Material _material;
-
-    public bool needDepthNormalTex = false;
+    
     //Bloom
     [System.Serializable]
     public struct BloomSettings

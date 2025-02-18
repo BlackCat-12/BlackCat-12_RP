@@ -12,5 +12,61 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6ad4600ae7d48839f9fb1f657bbdd6a, type: 3}
   m_Name: New Volume Profile
   m_EditorClassIdentifier: 
-  components: []
-  ProfilePostFXPrePasses: 
+  components:
+  - {fileID: 2153405233281967314}
+  ProfilePostFXPrePasses: 01000000
+--- !u!114 &2153405233281967314
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 945d5a9afa2b7f841aa79ac3fbd02d2c, type: 3}
+  m_Name: Pixelate
+  m_EditorClassIdentifier: 
+  active: 0
+  displayName: 
+  enabled:
+    overrideState: 0
+    m_Value: 0
+  maxIteration:
+    overrideState: 0
+    m_Value: 1
+--- !u!114 &8692387701175292979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02a1315c777fe894ebe5fa75359814ee, type: 3}
+  m_Name: Bloom
+  m_EditorClassIdentifier: 
+  active: 1
+  displayName: 
+  enabled:
+    overrideState: 0
+    m_Value: 0
+  intensity:
+    overrideState: 0
+    m_Value: 1
+  threshold1:
+    overrideState: 0
+    m_Value: 0
+  thresholdKnee:
+    overrideState: 0
+    m_Value: 0
+  maxIteration:
+    overrideState: 0
+    m_Value: 0
+  downScaleLimit:
+    overrideState: 0
+    m_Value: 1
+  bicubicUpsampling:
+    overrideState: 0
+    m_Value: 0
