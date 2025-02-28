@@ -18,6 +18,7 @@ public partial class CameraRenderer
     private Lighting _lighting = new Lighting();
     private RenderPostFX_PrePass _renderPostFXPrePass = new RenderPostFX_PrePass();
     private VolumeManager _volumeManager = VolumeManager.instance;
+    private DeferredRender _deferredRender = new DeferredRender();
     
     // Shader相关属性
     private static int frameBufferId = Shader.PropertyToID("_CameraFrameBuffer"),
@@ -27,12 +28,12 @@ public partial class CameraRenderer
         litShaderTagId = new ShaderTagId("CustomLit"),
         ToonTag = new ShaderTagId("ToonTag");
         
-    public void Render(ScriptableRenderContext context, Camera camera,  bool useDynamicBatching, bool useGPUInstancing, 
-         ShadowSetting shadowSetting, PostFXSettings postFXSettings)
+    public void Render(ScriptableRenderContext context, Camera camera,  RenderData.BatchingSettings batchingSettings, 
+         ShadowSetting shadowSetting, RenderData.PostFXData postFXSettings, RenderData.DeferredRenderingSettings deferredRenderingSettings)
     {
         this._context = context;
         this._camera = camera;
-        bool usePostFX = _volumeManager.CheckEffectActive();
+        bool usePostFX = _volumeManager.CheckEffectActive() && postFXSettings.usePostFx;  //只有当至少一个effect启动，且场景开启后处理选择
         
         PrepareBuffer();
         // 绘制UI等
@@ -45,36 +46,45 @@ public partial class CameraRenderer
         }
         
         // 初始化配置阶段
-            // 运行时初始化设置
-            _buffer.BeginSample(bufferName);
-            ExecuteBuffer();
-            _lighting.Setup(_context, _cullingResults, shadowSetting);
-            _buffer.EndSample(bufferName);
+        // 运行时初始化设置
+        _buffer.BeginSample(bufferName);
+        ExecuteBuffer();
+        _lighting.Setup(_context, _cullingResults, shadowSetting);
+        _buffer.EndSample(bufferName);
             
         _renderPostFXPrePass.Setup(context ,camera);
-        postFXStack.Setup(context, camera, postFXSettings);
-        
+        postFXStack.Setup(context, camera,  postFXSettings.PostFXSettings);
         Setup();
-        
-        // 渲染阶段
-            // 后处理准备阶段
-            // TODO: 后处理准备阶段
-            if (usePostFX && postFXStack.isActive) // 只有当至少一个effect启动，且场景开启后处理选择
-            {
-                _renderPostFXPrePass.Render(ref _cullingResults, _volumeManager.GetPostFXPrePasses());
-                SwitchRenderTarget(frameBufferId);
-            }
+
+
+        if (usePostFX)
+        {
+            _renderPostFXPrePass.Render(ref _cullingResults, _volumeManager.GetPostFXPrePasses());
+            SwitchRenderTarget(frameBufferId);
+            
             // 进行常规绘制渲染；若开启后处理，则结果将渲染到中间纹理上
-            DrawVisibleGeometry(useDynamicBatching, useGPUInstancing);
+            DrawVisibleGeometry(batchingSettings.useDynamicBatching, batchingSettings.useGPUInstancing);
             DrawUnsupportedShaders();
             DrawGizmosBeforePostFX();
 
             // 若开启了后处理，则将摄像机渲染结果传入，进行渲染
-            if (usePostFX && postFXStack.isActive)
-            {
-                postFXStack.Render(frameBufferId);
-            }
+        
+            postFXStack.Render(frameBufferId);
+            
             DrawGizmosAfterPostFX();
+        }
+        else if (deferredRenderingSettings.useDeferredRender)
+        {
+            _deferredRender.Setup(_context, _camera);
+            _deferredRender.Render();
+            
+        }else
+        {
+            DrawVisibleGeometry(batchingSettings.useDynamicBatching, batchingSettings.useGPUInstancing);
+            DrawUnsupportedShaders();
+            DrawGizmosBeforePostFX();
+        }
+        
         
         // 清除释放资源阶段
             Cleanup();
@@ -110,6 +120,7 @@ public partial class CameraRenderer
         );
         ExecuteBuffer();
     }
+    
     // 将缓存中的指令提交
     void Submit () {
         _buffer.EndSample(SampleName);
@@ -157,7 +168,7 @@ public partial class CameraRenderer
     }
 
     // 切换渲染目标
-    void SwitchRenderTarget(int colorTarget)
+    void SwitchRenderTarget(RenderTargetIdentifier colorTarget)
     {
         _buffer.SetRenderTarget(
             colorTarget, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store,

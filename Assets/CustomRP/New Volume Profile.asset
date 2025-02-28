@@ -1,5 +1,40 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-8462769369198716139
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02a1315c777fe894ebe5fa75359814ee, type: 3}
+  m_Name: Bloom
+  m_EditorClassIdentifier: 
+  active: 0
+  displayName: 
+  enabled:
+    overrideState: 0
+    m_Value: 0
+  intensity:
+    overrideState: 0
+    m_Value: 1.13
+  threshold1:
+    overrideState: 0
+    m_Value: 0
+  thresholdKnee:
+    overrideState: 0
+    m_Value: 0
+  maxIteration:
+    overrideState: 0
+    m_Value: 0
+  downScaleLimit:
+    overrideState: 0
+    m_Value: 1
+  bicubicUpsampling:
+    overrideState: 0
+    m_Value: 0
 --- !u!114 &-811789552933052456
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19,7 +54,7 @@ MonoBehaviour:
     m_Value: 0
   maxIteration:
     overrideState: 0
-    m_Value: 1
+    m_Value: 5.35
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32,5 +67,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a6ad4600ae7d48839f9fb1f657bbdd6a, type: 3}
   m_Name: New Volume Profile
   m_EditorClassIdentifier: 
-  components: []
-  ProfilePostFXPrePasses: 
+  components:
+  - {fileID: -811789552933052456}
+  - {fileID: -8462769369198716139}
+  ProfilePostFXPrePasses: 01000000

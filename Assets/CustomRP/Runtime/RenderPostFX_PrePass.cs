@@ -124,9 +124,13 @@ public class RenderPostFX_PrePass
     
     public void Cleanup()
     {
+        if (_fxPrePasses == null)
+        {
+            return;
+        }
         foreach (var pass in _fxPrePasses)   
         {
-            FXPreCleanups[pass].Invoke();
+            FXPreCleanups[pass]?.Invoke();
         }
     }
 }
