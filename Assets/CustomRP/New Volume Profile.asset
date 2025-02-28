@@ -54,7 +54,7 @@ MonoBehaviour:
     m_Value: 0
   maxIteration:
     overrideState: 0
-    m_Value: 5.35
+    m_Value: 8.54
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0

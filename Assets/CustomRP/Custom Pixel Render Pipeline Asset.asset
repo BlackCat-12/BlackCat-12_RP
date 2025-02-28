@@ -31,8 +31,9 @@ MonoBehaviour:
   _postFXData:
     usePostFx: 0
     PostFXSettings: {fileID: 11400000, guid: 9f8afcc33b72a714c88253518d44412e, type: 2}
+    needDepthNormal: 1
   _deferredRenderingSettings:
     useDeferredRender: 0
     specularIBL: {fileID: 0}
     diffuseIBL: {fileID: 0}
-    BRDFLUT: {fileID: 0}
+    BRDFLUT: {fileID: 2800000, guid: 126c9ede3dd1eaf42aeca8adf6434ad1, type: 3}

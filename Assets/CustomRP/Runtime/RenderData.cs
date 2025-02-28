@@ -32,5 +32,6 @@ public struct RenderData
     {
         public bool usePostFx;
         public PostFXSettings PostFXSettings;
+        public bool needDepthNormal;
     }
 }

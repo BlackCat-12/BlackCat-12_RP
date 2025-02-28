@@ -64,7 +64,7 @@ public class RenderPostFX_PrePass
         CommandBufferPool.Release(_cmd);
     }
 
-    void DrawSurfaceIdDepthTex()
+    public void DrawSurfaceIdDepthTex()
     {
         _cmd.GetTemporaryRT(surfaceIdDepthId, _camera.pixelWidth, _camera.pixelHeight,  
             24, FilterMode.Point, RenderTextureFormat.ARGBHalf);

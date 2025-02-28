@@ -19,6 +19,7 @@ public partial class CameraRenderer
     private RenderPostFX_PrePass _renderPostFXPrePass = new RenderPostFX_PrePass();
     private VolumeManager _volumeManager = VolumeManager.instance;
     private DeferredRender _deferredRender = new DeferredRender();
+    private DrawNormalDepth _drawNormalDepth;
     
     // Shader相关属性
     private static int frameBufferId = Shader.PropertyToID("_CameraFrameBuffer"),
@@ -56,7 +57,16 @@ public partial class CameraRenderer
         postFXStack.Setup(context, camera,  postFXSettings.PostFXSettings);
         Setup();
 
-
+        if (postFXSettings.needDepthNormal)
+        {
+            _drawNormalDepth ??= new DrawNormalDepth();
+            _drawNormalDepth.DrawNormalDepthTex(_context, _camera, ref _cullingResults);
+          
+            _buffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+            ExecuteBuffer();
+        }
+        
+        
         if (usePostFX)
         {
             _renderPostFXPrePass.Render(ref _cullingResults, _volumeManager.GetPostFXPrePasses());
@@ -78,16 +88,17 @@ public partial class CameraRenderer
             _deferredRender.Setup(_context, _camera);
             _deferredRender.Render();
             
-        }else
+        }
+        else
         {
+            _buffer.BeginSample(bufferName);
             DrawVisibleGeometry(batchingSettings.useDynamicBatching, batchingSettings.useGPUInstancing);
             DrawUnsupportedShaders();
             DrawGizmosBeforePostFX();
+            _buffer.EndSample(bufferName);
         }
-        
-        
         // 清除释放资源阶段
-            Cleanup();
+            Cleanup(postFXSettings);
             Submit();
     }
     // 渲染初始化，清除渲染缓存，开始采样 
@@ -192,9 +203,13 @@ public partial class CameraRenderer
     }
     
     // 释放中间缓存
-    void Cleanup()
+    void Cleanup(RenderData.PostFXData postFXData)
     {
         _lighting.Cleanup();
+        if (postFXData.needDepthNormal)
+        {
+            _drawNormalDepth.cleanup();
+        }
         if (_volumeManager.CheckEffectActive() && postFXStack.isActive)
         {
             postFXStack.Cleanup();
