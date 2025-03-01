@@ -10,7 +10,6 @@ using VolumeComponent = CustomRP.Runtime.Volume.VolumeComponent;
 [CustomRP.Runtime.Volume.VolumeComponentMenu("Post-processing/Bloom")]
 public class Bloom : VolumeComponent,IPostProcessComponent
 {
-    public BoolParameter enabled = new BoolParameter(false);
     public FloatParameter intensity = new FloatParameter(1f);
     public FloatParameter threshold1 = new FloatParameter(0f);
     public FloatParameter thresholdKnee = new FloatParameter(0f);
@@ -18,7 +17,10 @@ public class Bloom : VolumeComponent,IPostProcessComponent
     public FloatParameter downScaleLimit = new FloatParameter(1f);
     public BoolParameter bicubicUpsampling = new BoolParameter(false);
     public BoolParameter fadeFireflies = new BoolParameter(false);
-    
+    public enum Mode { Additive, Scattering }
+
+    public EnumParameter<Mode> mode = new EnumParameter<Mode>(Mode.Additive);
+    public FloatParameter scatter = new FloatParameter(0.5f);
     // 如果需要，您可以在这里添加其他参数
 
     private int fxSourceID,
@@ -61,9 +63,7 @@ public class Bloom : VolumeComponent,IPostProcessComponent
     }
     public void Prepare(bool useHDR)
     {
-        fxSourceID = Shader.PropertyToID("_PostFXSource");
-        fxSource2ID = Shader.PropertyToID("_PostFXSource2");
-
+        
         bloomBucibicUpsamplingID = Shader.PropertyToID("_BloomBicubicUpsampling");  // Bloom相关
         bloomPrefilterID = Shader.PropertyToID("_BloomPrefilter");
         bloomThresholdID = Shader.PropertyToID("_BloomThreshold");

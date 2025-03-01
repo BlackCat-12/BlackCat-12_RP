@@ -10,7 +10,6 @@ using VolumeComponent = CustomRP.Runtime.Volume.VolumeComponent;
 [CustomRP.Runtime.Volume.VolumeComponentMenu("Post-processing/Pixelate")]
 public class Pixelate : VolumeComponent,IPostProcessComponent
 {
-    public BoolParameter enabled = new BoolParameter(false);
     public FloatParameter maxIteration = new FloatParameter(1f);
 
     private static int surfaceIdDepthId ;
@@ -18,7 +17,7 @@ public class Pixelate : VolumeComponent,IPostProcessComponent
         surfaceIdDepthDownSampleID ,
         outlineID ,
         edgePixelTexID ;
-    private static int fxSourceID = Shader.PropertyToID("_PostFXSource");
+   
     
     // public override void GetParameters()
     // {
@@ -47,13 +46,13 @@ public class Pixelate : VolumeComponent,IPostProcessComponent
     }
 
     // TODO: 修改draw调用
-    void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, PostFX_Pass pass, CommandBuffer buffer, Material material)
-    {
-        buffer.SetGlobalTexture(fxSourceID, from);  // 设置全局渲染源纹理
-        buffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
-        // 进行绘制
-        buffer.DrawProcedural(Matrix4x4.identity, material, (int)pass, MeshTopology.Triangles, 3);
-    }
+    // void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, PostFX_Pass pass, CommandBuffer buffer, Material material)
+    // {
+    //     buffer.SetGlobalTexture(fxSourceID, from);  // 设置全局渲染源纹理
+    //     buffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+    //     // 进行绘制
+    //     buffer.DrawProcedural(Matrix4x4.identity, material, (int)pass, MeshTopology.Triangles, 3);
+    // }
 
     public void Render(CommandBuffer buffer, Camera _camera, int fxSourceID, Material material)
     {

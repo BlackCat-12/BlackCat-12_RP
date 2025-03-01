@@ -394,5 +394,24 @@ float4 CopyPassWithLinearFragment (Varyings input) : SV_TARGET {
     return GetSourceWithLinear(input.screenUV);
 }
 
+float4 ToneMappingReinhardPassFragment (Varyings input) : SV_TARGET {
+    float4 color = GetSourceWithLinear(input.screenUV);
+    color.rgb /= color.rgb + 1.0;
+    return color;
+}
+
+float4 ToneMappingNeutralPassFragment (Varyings input) : SV_TARGET {
+    float4 color = GetSourceWithLinear(input.screenUV);
+    color.rgb = min(color.rgb, 60.0);
+    color.rgb = NeutralTonemap(color.rgb);
+    return color;
+}
+
+float4 ToneMappingACESPassFragment (Varyings input) : SV_TARGET {
+    float4 color = GetSourceWithLinear(input.screenUV);
+    color.rgb = min(color.rgb, 60.0);
+    color.rgb = AcesTonemap(unity_to_ACES(color.rgb));
+    return color;
+}
 
 #endif 

@@ -1,6 +1,6 @@
 ﻿namespace CustomRP.Runtime.Volume
 {
-    enum PostFX_Pass
+    public enum PostFX_Pass
     {
         CopyWithPoint,
         CopyWithLinear,
@@ -13,6 +13,10 @@
     
         EdgeDectectWithNormalDepth,
         EdgeDectectWithSurfaceIdDepth,
-        DrawEdgePixel
+        DrawEdgePixel,
+        
+        ToneMappingACES,
+        ToneMappingNeutral,
+        ToneMappingReinhard,
     }
 }

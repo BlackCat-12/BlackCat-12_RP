@@ -1,12 +1,17 @@
-﻿namespace CustomRP.Runtime.Volume
+﻿using UnityEngine.Rendering;
+
+namespace CustomRP.Runtime.Volume
 {
     using System.Collections.Generic;
     using UnityEngine;
 
     public abstract class VolumeComponent : ScriptableObject
     {
+        
         public bool active = true;
-
+        public static int fxSourceID = Shader.PropertyToID("_PostFXSource"),
+            fxSource2ID = Shader.PropertyToID("_PostFXSource2");  // // 源纹理
+              
         // 序列化存储effect的参数
         [HideInInspector]
         public List<VolumeParameter> parameters = new List<VolumeParameter>();
@@ -14,7 +19,15 @@
         public PostFX_PrePass? _postFXPrePass = null;  // 可空类型enum，初始为空
 
         protected bool _useHDR = false;
-
+        protected BoolParameter enabled = new BoolParameter(false);
+        
+        protected void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, PostFX_Pass pass, CommandBuffer buffer, Material material)
+        {
+            buffer.SetGlobalTexture(fxSourceID, from);  // 设置全局渲染源纹理
+            buffer.SetRenderTarget(to, RenderBufferLoadAction.DontCare, RenderBufferStoreAction.Store);
+            // 进行绘制
+            buffer.DrawProcedural(Matrix4x4.identity, material, (int)pass, MeshTopology.Triangles, 3);
+        }
         // 获取所有参数
         // public virtual void GetParameters()
         // {
