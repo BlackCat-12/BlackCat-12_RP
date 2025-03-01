@@ -16,10 +16,10 @@ MonoBehaviour:
   displayName: 
   intensity:
     overrideState: 0
-    m_Value: 1.13
+    m_Value: 1.26
   threshold1:
     overrideState: 0
-    m_Value: 0
+    m_Value: 0.03
   thresholdKnee:
     overrideState: 0
     m_Value: 0
@@ -41,23 +41,6 @@ MonoBehaviour:
   scatter:
     overrideState: 0
     m_Value: 0.5
---- !u!114 &-8143460491821938192
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d2459a8d504b45ef81e4a1d09d259e76, type: 3}
-  m_Name: ToneMapping
-  m_EditorClassIdentifier: 
-  active: 1
-  displayName: 
-  mode:
-    overrideState: 0
-    m_Value: -1
 --- !u!114 &-811789552933052456
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -70,7 +53,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 945d5a9afa2b7f841aa79ac3fbd02d2c, type: 3}
   m_Name: Pixelate
   m_EditorClassIdentifier: 
-  active: 1
+  active: 0
   displayName: 
   maxIteration:
     overrideState: 0
@@ -91,3 +74,58 @@ MonoBehaviour:
   - {fileID: -811789552933052456}
   - {fileID: -8462769369198716139}
   ProfilePostFXPrePasses: 01000000
+--- !u!114 &2441577119292981991
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2459a8d504b45ef81e4a1d09d259e76, type: 3}
+  m_Name: ToneMapping
+  m_EditorClassIdentifier: 
+  active: 1
+  displayName: 
+  mode:
+    overrideState: 0
+    m_Value: 0
+  colorLUTResolution:
+    overrideState: 0
+    m_Value: 32
+  colorAdjustmentss:
+    overrideState: 0
+    m_Value:
+      postExposure: 0
+      contrast: 0
+      colorFilter: {r: 1, g: 1, b: 1, a: 1}
+      hueShift: 0
+      saturation: 0
+  whiteBalance:
+    overrideState: 0
+    m_Value:
+      temperature: 0
+      tint: 0
+  splitToning:
+    overrideState: 0
+    m_Value:
+      shadows: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+      highlights: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+      balance: 0
+  channelMixer:
+    overrideState: 0
+    m_Value:
+      red: {x: 1, y: 0, z: 0}
+      green: {x: 0, y: 1, z: 0}
+      blue: {x: 0, y: 0, z: 1}
+  smh:
+    overrideState: 0
+    m_Value:
+      shadows: {r: 1, g: 1, b: 1, a: 1}
+      midtones: {r: 1, g: 1, b: 1, a: 1}
+      highlights: {r: 1, g: 1, b: 1, a: 1}
+      shadowsStart: 0
+      shadowsEnd: 0.3
+      highlightsStart: 0.55
+      highLightsEnd: 1

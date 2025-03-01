@@ -15,8 +15,10 @@
         EdgeDectectWithSurfaceIdDepth,
         DrawEdgePixel,
         
-        ToneMappingACES,
-        ToneMappingNeutral,
-        ToneMappingReinhard,
+        ColorGradingNone,
+        ColorGradingACES,
+        ColorGradingNeutral,
+        ColorGradingReinhard,
+        Final
     }
 }
