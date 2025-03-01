@@ -13,6 +13,8 @@
         
         public PostFX_PrePass? _postFXPrePass = null;  // 可空类型enum，初始为空
 
+        protected bool _useHDR = false;
+
         // 获取所有参数
         // public virtual void GetParameters()
         // {

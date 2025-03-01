@@ -34,7 +34,7 @@ public class Pixelate : VolumeComponent,IPostProcessComponent
     {
         _postFXPrePass = PostFX_PrePass.SurfaceIdDepthTex;
     }
-    public void Prepare()
+    public void Prepare(bool useHDR)
     {
         fxPixelDownSampleID = Shader.PropertyToID("_FXPixelDownSample");  // Pixel相关
         surfaceIdDepthDownSampleID = Shader.PropertyToID("_SurfaceIdDepthDownSampleTex");
@@ -42,6 +42,8 @@ public class Pixelate : VolumeComponent,IPostProcessComponent
         edgePixelTexID = Shader.PropertyToID("_EdgePixelTexId");
         
         surfaceIdDepthId = Shader.PropertyToID("_SurfaceIdDepthTex");
+
+        _useHDR = useHDR;
     }
 
     // TODO: 修改draw调用
@@ -58,19 +60,19 @@ public class Pixelate : VolumeComponent,IPostProcessComponent
         // 获取Setting设置
         // TODO: 池化处理
         buffer.BeginSample("Pixelate");
-        
         // 创建纹理
+        RenderTextureFormat format = _useHDR? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
         int downWidth = (int)(_camera.pixelWidth / maxIteration.value);
         int downHeight = (int)(_camera.pixelHeight / maxIteration.value);
         
         buffer.GetTemporaryRT(fxPixelDownSampleID, downWidth, downHeight,  // 过滤模式指当读取采样本贴图写入到其他贴图时的过滤
-            32, FilterMode.Point, RenderTextureFormat.Default);
+            32, FilterMode.Point, format);
         buffer.GetTemporaryRT(outlineID, downWidth, downHeight, 
-            32, FilterMode.Point, RenderTextureFormat.Default);
+            32, FilterMode.Point, format);
         buffer.GetTemporaryRT(edgePixelTexID, _camera.pixelWidth, _camera.pixelHeight, 
-            24, FilterMode.Point, RenderTextureFormat.Default);
+            24, FilterMode.Point, format);
         buffer.GetTemporaryRT(surfaceIdDepthDownSampleID, downWidth, downHeight, 
-            32, FilterMode.Point, RenderTextureFormat.Default);
+            32, FilterMode.Point, format);
         
         // 下采样像素化
         Draw(fxSourceID,fxPixelDownSampleID , PostFX_Pass.CopyWithPoint, buffer, material);

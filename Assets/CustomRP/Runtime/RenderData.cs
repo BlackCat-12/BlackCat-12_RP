@@ -30,6 +30,7 @@ public struct RenderData
     [System.Serializable]
     public struct PostFXData
     {
+        public bool useHDR;
         public bool usePostFx;
         public PostFXSettings PostFXSettings;
         public bool needDepthNormal;

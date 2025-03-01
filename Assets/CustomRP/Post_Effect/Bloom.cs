@@ -17,7 +17,8 @@ public class Bloom : VolumeComponent,IPostProcessComponent
     public FloatParameter maxIteration = new FloatParameter(0f);
     public FloatParameter downScaleLimit = new FloatParameter(1f);
     public BoolParameter bicubicUpsampling = new BoolParameter(false);
-
+    public BoolParameter fadeFireflies = new BoolParameter(false);
+    
     // 如果需要，您可以在这里添加其他参数
 
     private int fxSourceID,
@@ -44,6 +45,11 @@ public class Bloom : VolumeComponent,IPostProcessComponent
         return enabled.value;
     }
 
+    public void Prepare()
+    {
+        throw new NotImplementedException();
+    }
+
     // TODO: effect构造函数修改
     private Bloom()
     {
@@ -53,7 +59,7 @@ public class Bloom : VolumeComponent,IPostProcessComponent
             Shader.PropertyToID("_BloomPyramid" + i);
         }
     }
-    public void Prepare()
+    public void Prepare(bool useHDR)
     {
         fxSourceID = Shader.PropertyToID("_PostFXSource");
         fxSource2ID = Shader.PropertyToID("_PostFXSource2");
@@ -62,6 +68,8 @@ public class Bloom : VolumeComponent,IPostProcessComponent
         bloomPrefilterID = Shader.PropertyToID("_BloomPrefilter");
         bloomThresholdID = Shader.PropertyToID("_BloomThreshold");
         bloomIntensityID = Shader.PropertyToID("_BloomIntensity");
+
+        _useHDR = useHDR;
     }
     
     void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, PostFX_Pass pass, CommandBuffer buffer, Material material)
@@ -90,11 +98,12 @@ public class Bloom : VolumeComponent,IPostProcessComponent
         threshold.y -= threshold.x;
         cmd.SetGlobalVector(bloomThresholdID, threshold);
         
-        RenderTextureFormat format = RenderTextureFormat.Default;
+        RenderTextureFormat format = _useHDR? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
         cmd.GetTemporaryRT(
             bloomPrefilterID, width, height, 0, FilterMode.Bilinear, format
         );
-        Draw(fxSourceID, bloomPrefilterID, PostFX_Pass.BloomPrefilter, cmd, material);
+        Draw(fxSourceID, bloomPrefilterID, fadeFireflies.value 
+            ? PostFX_Pass.BloomPrefilterFireflies : PostFX_Pass.BloomPrefilter, cmd, material);
         width /= 2;
         height /= 2;
         

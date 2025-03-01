@@ -7,8 +7,9 @@
     
         BloomVertical,
         BloomHorizontal,
-        BloomCombinePass,
         BloomPrefilter,
+        BloomPrefilterFireflies,
+        BloomCombinePass,
     
         EdgeDectectWithNormalDepth,
         EdgeDectectWithSurfaceIdDepth,

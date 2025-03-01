@@ -19,8 +19,8 @@ public partial class PostFXStack
     private PostFXSettings settings;
 
     private Camera _camera;
+    private bool _useHDR;
     public bool IsNeedDepthNormalTex => true;
-
     public bool isActive = false;
 
     private Shader _postFXShader = Shader.Find("Hidden/Custom RP/Post FX Stack");
@@ -30,6 +30,8 @@ public partial class PostFXStack
     
     private static int fxSourceID = Shader.PropertyToID("_PostFXSource"),
         fxSource2ID = Shader.PropertyToID("_PostFXSource2");
+
+    private PostFXSettings _postFXSettings;
 
 
     public PostFXStack()
@@ -49,21 +51,18 @@ public partial class PostFXStack
         }
     }
     public void Setup (
-        ScriptableRenderContext context, Camera camera, PostFXSettings settings
+        ScriptableRenderContext context, Camera camera, PostFXSettings settings, bool useHDR
     ) {
         this.context = context;
         this._camera = camera;
         this.isActive = camera.cameraType <= CameraType.SceneView;
-        
+        _postFXSettings = this.settings;
+
+        _useHDR = useHDR;
         //配置关闭Scene界面的后处理显示
         ApplySceneViewState();
     }
-
-    public void PreparePostFX()
-    {
-        
-    }
-
+    
     public void Render(int sourceId)
     {
         List<CustomRP.Runtime.Volume.Volume> volumeComponents = VolumeManager.instance.GetVolumes(_camera);
@@ -77,7 +76,7 @@ public partial class PostFXStack
         {
             if (component.active && component is IPostProcessComponent postProcessComponent)
             {
-                postProcessComponent.Prepare();
+                postProcessComponent.Prepare(_useHDR);
             }
         }
         foreach (var component in volumeProfile.components)  // 后处理阶段

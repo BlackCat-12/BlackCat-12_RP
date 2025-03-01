@@ -12,6 +12,7 @@ public partial class CameraRenderer
     private const string bufferName = "Render Camera";
     private CullingResults _cullingResults;
     private CommandBuffer _buffer = new CommandBuffer { name = bufferName };
+    private bool useHDR;
     
     // 实例化脚本
     PostFXStack postFXStack = new PostFXStack();
@@ -40,11 +41,13 @@ public partial class CameraRenderer
         // 绘制UI等
         PrepareForSceneWindow();
         
+      
         // 平截头体剔除，获取剔除结果
         if (!Cull(shadowSetting.maxDistance))
         {
             return;
         }
+        useHDR = postFXSettings.useHDR && camera.allowHDR;
         
         // 初始化配置阶段
         // 运行时初始化设置
@@ -54,7 +57,7 @@ public partial class CameraRenderer
         _buffer.EndSample(bufferName);
             
         _renderPostFXPrePass.Setup(context ,camera);
-        postFXStack.Setup(context, camera,  postFXSettings.PostFXSettings);
+        postFXStack.Setup(context, camera,  postFXSettings.PostFXSettings, useHDR);
         Setup();
 
         if (postFXSettings.needDepthNormal)
@@ -120,7 +123,7 @@ public partial class CameraRenderer
             }
             // 为nameId创建存储摄像机输出的RT
             _buffer.GetTemporaryRT(frameBufferId, _camera.pixelWidth, _camera.pixelHeight, 
-                32, FilterMode.Point, RenderTextureFormat.Default);
+                32, FilterMode.Point, useHDR ? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default);  // 查看是否使用HDR
         }
         // 清除摄像机缓存区的缓存
         _buffer.ClearRenderTarget(

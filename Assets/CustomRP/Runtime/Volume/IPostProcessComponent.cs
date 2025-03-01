@@ -7,9 +7,7 @@ namespace CustomRP.Runtime.Volume
     {
         bool IsActive();
 
-        void Prepare();
+        void Prepare(bool useHDR);
         void Render(CommandBuffer cmd, Camera camera, int fxSourceID, Material material);
-        
-        
     }
 }
