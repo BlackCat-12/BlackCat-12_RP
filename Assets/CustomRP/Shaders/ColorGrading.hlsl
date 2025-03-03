@@ -1,4 +1,5 @@
-
+#ifndef CUSTOM_POST_FX_PASSES_COLORGRADING_INCLUDED
+#define CUSTOM_POST_FX_PASSES_COLORGRADING_INCLUDED
 
 float4 _ColorAdjustments;
 float4 _ColorFilter;
@@ -101,7 +102,7 @@ float4 ColorGradingNonePassFragment (Varyings input) : SV_TARGET {
 }
 
 float4 ColorGradingACESPassFragment (Varyings input) : SV_TARGET {
-	float3 color = GetColorGradedLUT(input.screenUV, true);
+	float3 color = GetColorGradedLUT(input.screenUV, true);  // 对ACES映射使用ACES空间替代gramme空间
 	color = AcesTonemap(color);
 	return float4(color, 1.0);
 }
@@ -129,7 +130,8 @@ float3 ApplyColorGradingLUT (float3 color) {
 }
 
 float4 FinalPassFragment (Varyings input) : SV_TARGET {
-	float4 color = GetSource(input.screenUV);
+	float4 color = GetSourceWithLinear(input.screenUV);
 	color.rgb = ApplyColorGradingLUT(color.rgb);
 	return color;
 }
+#endif

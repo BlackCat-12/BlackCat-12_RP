@@ -58,6 +58,7 @@ namespace CustomRP.Post_Effect
             });
         
         
+        // TODO:fIXED
         int
             colorGradingLUTId = Shader.PropertyToID("_ColorGradingLUT"),
             colorGradingLUTParametersId = Shader.PropertyToID("_ColorGradingLUTParameters"),
@@ -82,7 +83,7 @@ namespace CustomRP.Post_Effect
 
         public void Prepare(bool useHDR)
         {
-           
+            _useHDR = useHDR;
         }
 
         public void Render(CommandBuffer cmd, Camera camera, int fxSourceID, Material material)
@@ -147,7 +148,7 @@ namespace CustomRP.Post_Effect
             );
             
             // 交换纹理并写回
-            Draw(fxSourceID, fxSource2ID, PostFX_Pass.CopyWithPoint, cmd, material);
+            Draw(fxSourceID, fxSource2ID, PostFX_Pass.CopyWithLinear, cmd, material);
             Draw(fxSource2ID, fxSourceID, PostFX_Pass.Final, cmd, material);
             
             cmd.ReleaseTemporaryRT(fxSource2ID);

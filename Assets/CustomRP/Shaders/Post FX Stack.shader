@@ -164,5 +164,43 @@ Shader "Hidden/Custom RP/Post FX Stack" {
 				#pragma fragment FinalPassFragment
 			ENDHLSL
 		}
+
+		Pass
+		{
+		    Name "SSR Rarmarching Pass"
+		    
+		    HLSLPROGRAM
+		    #pragma vertex DefaultPassVertex
+		    #pragma fragment SSRPassFragment3
+		    ENDHLSL
+		}
+
+		Pass {
+		    Name "SSR Addtive Pass"
+
+		    ZTest NotEqual
+		    ZWrite Off
+		    Cull Off
+		    Blend One One, One Zero
+
+		    HLSLPROGRAM
+		    #pragma vertex DefaultPassVertex
+		    #pragma fragment SSRFinalPassFragment
+		    ENDHLSL
+		}
+
+		Pass {
+		    Name "SSR Balance Pass"
+
+		    ZTest NotEqual
+		    ZWrite Off
+		    Cull Off
+		    Blend SrcColor OneMinusSrcColor, One Zero
+
+		    HLSLPROGRAM
+		    #pragma vertex DefaultPassVertex
+		    #pragma fragment SSRFinalPassFragment
+		    ENDHLSL
+		}
 	}
 }

@@ -7,6 +7,7 @@ SamplerState my_point_clamp_sampler;
 SamplerState my_linear_clamp_sampler;
 SamplerState sampler_linear_clamp;
 
+
 // 全局纹理
 TEXTURE2D(_DepthNormalTex);
 TEXTURE2D(_SurfaceIdDepthTex);
@@ -14,6 +15,7 @@ TEXTURE2D(_SurfaceIdDepthTex);
 // 中间交换纹理
 TEXTURE2D(_PostFXSource);
 TEXTURE2D(_PostFXSource2);
+TEXTURE2D(_PostFXSource3);
 
 TEXTURE2D(_OutlineTex);
 TEXTURE2D(_FXPixelDownSample);
@@ -30,7 +32,6 @@ float _NormalThreshold;
 float _DepthBias;
 float _NormalBias;
 
-float4 _ProjectionParams;
 float4 _PostFXSource_TexelSize;
 bool _BloomBicubicUpsampling;
 float _BloomIntensity;
@@ -106,6 +107,16 @@ float4 GetSourceTexelSize () {
     return _PostFXSource_TexelSize;
 }
 
+float SampleSceneDepth(float2 screenUV)
+{
+    return 1 - SAMPLE_TEXTURE2D(_DepthNormalTex, my_point_clamp_sampler, screenUV).a;
+}
+
+float3 SampleSceneNormal(float2 screenUV)
+{
+    float3 normal = SAMPLE_TEXTURE2D(_DepthNormalTex, my_point_clamp_sampler, screenUV).xyz;
+    return normal * 2 - 1;
+}
 
 float4 GetSourceWithPoint(float2 screenUV)
 {
@@ -396,140 +407,320 @@ float4 CopyPassWithLinearFragment (Varyings input) : SV_TARGET {
 }
 
 
+#include "ColorGrading.hlsl"
+
+float4 _ProjectionParams2;  
+float4 _CameraViewTopLeftCorner;  
+float4 _CameraViewXExtent;  
+float4 _CameraViewYExtent;  
+
+float _Intensity;
+float _MaxDistance;
+float _Thickness;
 
 
-float4 _ColorAdjustments;
-float4 _ColorFilter;
-float4 _WhiteBalance;
-float4 _SplitToningShadows, _SplitToningHighlights;
-float4 _ChannelMixerRed, _ChannelMixerGreen, _ChannelMixerBlue;
-float4 _SMHShadows, _SMHMidtones, _SMHHighlights, _SMHRange;
+int _Stride;
+int _StepCount = 30;
+int _BinaryCount;
+// #define MAXDISTANCE 10  
+// #define STRIDE 3  
+#define STEP_COUNT 200  
+// // 能反射和不可能的反射之间的界限  
+// #define THICKNESS 0.5  
 
-float Luminance (float3 color, bool useACES) {
-	return useACES ? AcesLuminance(color) : Luminance(color);
+// 能反射和不可能的反射之间的界限  
+
+#define STEP_SIZE 0.1
+
+void swap(inout float v0, inout float v1) {  
+    float temp = v0;  
+    v0 = v1;    
+    v1 = temp;
+}  
+
+// half4 GetSource(half2 uv) {  
+//     return SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearRepeat, uv, _BlitMipLevel);  
+// }  
+
+// 还原观察空间下，进行向世界空间的旋转，片段相对于相机的位置，
+half3 ReconstructViewPos(float2 uv, float linearEyeDepth) {  
+    // Screen is y-inverted  
+    uv.y = 1.0 - uv.y;  
+
+    float zScale = linearEyeDepth * _ProjectionParams2.x; // divide by near plane  
+    float3 viewPos = _CameraViewTopLeftCorner.xyz + _CameraViewXExtent.xyz * uv.x + _CameraViewYExtent.xyz * uv.y;  
+    viewPos *= zScale;  
+    return viewPos;  
+}  
+
+// 从视角坐标转裁剪屏幕ao坐标
+float4 TransformViewToHScreen(float3 vpos, float2 screenSize) {  
+    float4 cpos = mul(UNITY_MATRIX_P, vpos);  
+    cpos.xy = float2(cpos.x, cpos.y * _ProjectionParams.x) * 0.5 + 0.5 * cpos.w;  
+    cpos.xy *= screenSize;  
+    return cpos;  
 }
 
-float3 ColorGradePostExposure (float3 color) {
-	return color * _ColorAdjustments.x;
+// 从视角空间坐标片元uv和深度  
+void ReconstructUVAndDepth(float3 wpos, out float2 uv, out float depth) {  
+    float4 cpos = mul(UNITY_MATRIX_VP, wpos);  
+    uv = float2(cpos.x, cpos.y * _ProjectionParams.x) / cpos.w * 0.5 + 0.5;  
+    depth = cpos.w;  
 }
 
-float3 ColorGradeWhiteBalance (float3 color) {
-	color = LinearToLMS(color);
-	color *= _WhiteBalance.rgb;
-	return LMSToLinear(color);
+half4 SSRFinalPassFragment(Varyings input) : SV_Target {  
+    return half4(GetSourceWithLinear(input.screenUV).rgb * _Intensity, 1.0);  
 }
 
-float3 ColorGradingContrast (float3 color, bool useACES) {
-	color = useACES ? ACES_to_ACEScc(unity_to_ACES(color)) : LinearToLogC(color);
-	color = (color - ACEScc_MIDGRAY) * _ColorAdjustments.y + ACEScc_MIDGRAY;
-	return useACES ? ACES_to_ACEScg(ACEScc_to_ACES(color)) : LogCToLinear(color);
+// jitter dither map
+static half dither[16] = {
+    0.0, 0.5, 0.125, 0.625,
+    0.75, 0.25, 0.875, 0.375,
+    0.187, 0.687, 0.0625, 0.562,
+    0.937, 0.437, 0.812, 0.312
+};
+
+float4 _SourceSize;
+
+bool ScreenSpaceRayMarching(inout float2 P, inout float3 Q, inout float K, float2 dp, float3 dq, float dk, float rayZ, bool permute, out float depthDistance, inout float2 hitUV) {
+    // float end = endScreen.x * dir;
+    float rayZMin = rayZ;
+    float rayZMax = rayZ;
+    float preZ = rayZ;
+
+    // 进行屏幕空间射线步近
+    UNITY_LOOP
+    for (int i = 0; i < _StepCount; i++) {
+        // 步近
+        P += dp;
+        Q += dq;
+        K += dk;
+
+        // 得到步近前后两点的深度
+        rayZMin = preZ;
+        rayZMax = (dq.z * 0.5 + Q.z) / (dk * 0.5 + K);
+        preZ = rayZMax;
+        if (rayZMin > rayZMax)
+            swap(rayZMin, rayZMax);
+
+        // 得到交点uv
+        hitUV = permute > 0.5 ? P.yx : P;
+        hitUV *= _SourceSize.zw;
+
+        if (any(hitUV < 0.0) || any(hitUV > 1.0))
+            return false;
+
+        float surfaceDepth = -LinearEyeDepth(SampleSceneDepth(hitUV), _ZBufferParams);
+        bool isBehind = (rayZMin + 0.1 <= surfaceDepth); // 加一个bias 防止stride过小，自反射
+
+        depthDistance = abs(surfaceDepth - rayZMax);
+
+        if (isBehind) {
+            return true;
+        }
+    }
+    return false;
 }
 
-float3 ColorGradeColorFilter (float3 color) {
-	return color * _ColorFilter.rgb;
+bool BinarySearchRaymarching(float3 startView, float3 rDir, inout float2 hitUV) {
+    float magnitude = _MaxDistance;
+
+    float end = startView.z + rDir.z * magnitude;
+    if (end > -_ProjectionParams.y)
+        magnitude = (-_ProjectionParams.y - startView.z) / rDir.z;
+    float3 endView = startView + rDir * magnitude;
+
+    // 齐次屏幕空间坐标
+    float4 startHScreen = TransformViewToHScreen(startView, _SourceSize.xy);
+    float4 endHScreen = TransformViewToHScreen(endView, _SourceSize.xy);
+
+    // inverse w
+    float startK = 1.0 / startHScreen.w;
+    float endK = 1.0 / endHScreen.w;
+
+    //  结束屏幕空间坐标
+    float2 startScreen = startHScreen.xy * startK;
+    float2 endScreen = endHScreen.xy * endK;
+
+    // 经过齐次除法的视角坐标
+    float3 startQ = startView * startK;
+    float3 endQ = endView * endK;
+
+    float stride = _Stride;
+
+    float depthDistance = 0.0;
+
+    bool permute = false;
+
+    // 根据斜率将dx=1 dy = delta
+    float2 diff = endScreen - startScreen;
+    if (abs(diff.x) < abs(diff.y)) {
+        permute = true;
+
+        diff = diff.yx;
+        startScreen = startScreen.yx;
+        endScreen = endScreen.yx;
+    }
+
+    // 计算屏幕坐标、齐次视坐标、inverse-w的线性增量
+    float dir = sign(diff.x);
+    float invdx = dir / diff.x;
+    float2 dp = float2(dir, invdx * diff.y);
+    float3 dq = (endQ - startQ) * invdx;
+    float dk = (endK - startK) * invdx;
+
+    dp *= stride;
+    dq *= stride;
+    dk *= stride;
+
+    // 缓存当前深度和位置
+    float rayZ = startView.z;
+
+    float2 P = startScreen;
+    float3 Q = startQ;
+    float K = startK;
+
+  
+    UNITY_LOOP
+     for (int i = 0; i < _BinaryCount; i++) {
+         float2 ditherUV = fmod(P, 4);  
+         float jitter = dither[ditherUV.x * 4 + ditherUV.y];  
+
+         P += dp * jitter;  
+         Q += dq * jitter;  
+         K += dk * jitter;
+         if (ScreenSpaceRayMarching(P, Q, K, dp, dq, dk, rayZ, permute, depthDistance, hitUV)) {
+            if (depthDistance < _Thickness)
+                return true;
+            P -= dp;
+            Q -= dq;
+            K -= dk;
+            rayZ = Q / K;
+
+            dp *= 0.5;
+            dq *= 0.5;
+            dk *= 0.5;
+        }
+        else {
+            return false;
+        }
+    }
+    return false;
+}
+half4 SSRPassFragment3(Varyings input) : SV_Target {  
+    float rawDepth = SampleSceneDepth(input.screenUV);  
+    float linearDepth = LinearEyeDepth(rawDepth, _ZBufferParams);   
+    float3 vpos = ReconstructViewPos(input.screenUV, linearDepth);  
+    float3 normal = SampleSceneNormal(input.screenUV);  // 观察空间法线方向
+    float3 vDir = normalize(vpos);  
+    float3 rDir = TransformWorldToViewDir(normalize(reflect(vDir, normal)));  //  观察空间反射方向
+
+    float magnitude = _MaxDistance;  
+
+    // 视空间坐标  
+    vpos = _WorldSpaceCameraPos + vpos;  // 片段在世界空间的位置
+    float3 startView = TransformWorldToView(vpos);  // 观察空间坐标
+    float end = startView.z + rDir.z * magnitude;  
+    if (end > -_ProjectionParams.y)  // 当结束点超出近平面时，限制。Unity观察空间为右手系，近远平面深度值为负
+        magnitude = (-_ProjectionParams.y - startView.z) / rDir.z;  
+    float3 endView = startView + rDir * magnitude;  // 使反射结束点始终在近平面以内，防止无效计算
+
+    // 齐次屏幕空间坐标  
+    float4 startHScreen = TransformViewToHScreen(startView, _SourceSize.xy);  // 将观察空间的起始点变换到屏幕空间
+    float4 endHScreen = TransformViewToHScreen(endView, _SourceSize.xy);  
+
+    // inverse w  
+    float startK = 1.0 / startHScreen.w;  // K为w的倒数，保留即 1/Zview
+    float endK = 1.0 / endHScreen.w;  
+
+    //  结束屏幕空间坐标  
+    float2 startScreen = startHScreen.xy * startK;  // 透视除法，xy转换为NDC
+    float2 endScreen = endHScreen.xy * endK;  
+
+    // 经过齐次除法的视角坐标  
+    float3 startQ = startView * startK;  //  为观察空间赋予非线性特性
+    float3 endQ = endView * endK;  
+
+    // 根据斜率将dx=1 dy = delta  
+    float2 diff = endScreen - startScreen;  
+    bool permute = false;  
+    if (abs(diff.x) < abs(diff.y)) {  // 进行DDA翻转
+        permute = true;  
+
+        diff = diff.yx;  
+        startScreen = startScreen.yx;  
+        endScreen = endScreen.yx;  
+    }  
+    // 计算屏幕坐标、齐次视坐标、inverse-w的线性增量  
+    float dir = sign(diff.x);  
+    float invdx = dir / diff.x;  
+    float2 dp = float2(dir, invdx * diff.y);  
+    float3 dq = (endQ - startQ) * invdx;  
+    float dk = (endK - startK) * invdx;  
+
+    dp *= _Stride;  
+    dq *= _Stride;  
+    dk *= _Stride;  
+
+    // 缓存当前深度和位置  
+    float rayZMin = startView.z;  
+    float rayZMax = startView.z;  
+    float preZ = startView.z;  
+
+    float2 P = startScreen;  
+    float3 Q = startQ;  
+    float K = startK;  
+
+    end = endScreen.x * dir;  
+
+    // 进行屏幕空间射线步近  
+    UNITY_LOOP  
+    for (int i = 0; i < _StepCount && P.x * dir <= end; i++) {  
+        // 步近  
+        P += dp;  
+        Q.z += dq.z;  
+        K += dk;  
+        // 得到步近前后两点的深度  
+        rayZMin = preZ;  
+        rayZMax = (dq.z * 0.5 + Q.z) / (dk * 0.5 + K);  
+        preZ = rayZMax;        if (rayZMin > rayZMax)  
+            swap(rayZMin, rayZMax);  
+    
+        // 得到交点uv  
+        float2 hitUV = permute ? P.yx : P;  
+        hitUV *= _SourceSize.zw;  
+        if (any(hitUV < 0.0) || any(hitUV > 1.0))  
+            return GetSourceWithLinear(input.screenUV);  
+        float surfaceDepth = -LinearEyeDepth(SampleSceneDepth(hitUV), _ZBufferParams);  
+        
+        if (BinarySearchRaymarching(startView, rDir, hitUV))  
+            return float4(1.0, 0.0, 0.0, 1.0);  
+    }  
+    return GetSourceWithLinear(input.screenUV);  
 }
 
-float3 ColorGradingHueShift (float3 color) {
-	color = RgbToHsv(color);
-	float hue = color.x + _ColorAdjustments.z;
-	color.x = RotateHue(hue, 0.0, 1.0);
-	return HsvToRgb(color);
+half4 SSRPassFragment2(Varyings input) : SV_Target {  
+    float rawDepth = SampleSceneDepth(input.screenUV);  // 采样得当前片段深度值
+    float linearDepth = LinearEyeDepth(rawDepth, _ZBufferParams);  // 变换到观察空间线性深度值，方便进行比较
+    float3 vpos = ReconstructViewPos(input.screenUV, linearDepth);  // 获得片段在观察空间的坐标
+    float3 vnormal = SampleSceneNormal(input.screenUV);  // 法线在世界空间下的方向
+    float3 vDir = normalize(vpos);  
+    float3 rDir = normalize(reflect(vDir, vnormal));  // 求得反射方向
+
+    float2 uv;  
+    float depth;
+
+    UNITY_LOOP
+    for (int i = 0; i < STEP_COUNT; i++) {  
+        float3 vpos2 = vpos + rDir * STEP_SIZE * i;  // 开始沿反射方向步进
+        float2 uv2;  
+        float stepDepth;  
+        ReconstructUVAndDepth(vpos2, uv2, stepDepth);  // 计算步进点的深度值
+        float stepRawDepth = SampleSceneDepth(uv2);  
+        float stepSurfaceDepth = LinearEyeDepth(stepRawDepth, _ZBufferParams);   
+        if (stepSurfaceDepth < stepDepth && stepDepth < stepSurfaceDepth + _Thickness)  // 若步进到达目标 ，条件二限制进入厚度，防止步进过深
+            return GetSourceWithLinear(uv2);  // 返回目标位置颜色
+    }    
+    return half4(0, 0, 0, 1.0);  
 }
-
-float3 ColorGradingSaturation (float3 color, bool useACES) {
-	float luminance = Luminance(color, useACES);
-	return (color - luminance) * _ColorAdjustments.w + luminance;
-}
-
-float3 ColorGradeSplitToning (float3 color, bool useACES) {
-	color = PositivePow(color, 1.0 / 2.2);
-	float t = saturate(Luminance(saturate(color), useACES) + _SplitToningShadows.w);
-	float3 shadows = lerp(0.5, _SplitToningShadows.rgb, 1.0 - t);
-	float3 highlights = lerp(0.5, _SplitToningHighlights.rgb, t);
-	color = SoftLight(color, shadows);
-	color = SoftLight(color, highlights);
-	return PositivePow(color, 2.2);
-}
-
-float3 ColorGradingChannelMixer (float3 color) {
-	return mul(
-		float3x3(_ChannelMixerRed.rgb, _ChannelMixerGreen.rgb, _ChannelMixerBlue.rgb),
-		color
-	);
-}
-
-float3 ColorGradingShadowsMidtonesHighlights (float3 color, bool useACES) {
-	float luminance = Luminance(color, useACES);
-	float shadowsWeight = 1.0 - smoothstep(_SMHRange.x, _SMHRange.y, luminance);
-	float highlightsWeight = smoothstep(_SMHRange.z, _SMHRange.w, luminance);
-	float midtonesWeight = 1.0 - shadowsWeight - highlightsWeight;
-	return
-		color * _SMHShadows.rgb * shadowsWeight +
-		color * _SMHMidtones.rgb * midtonesWeight +
-		color * _SMHHighlights.rgb * highlightsWeight;
-}
-
-float3 ColorGrade (float3 color, bool useACES = false) {
-	color = ColorGradePostExposure(color);
-	color = ColorGradeWhiteBalance(color);
-	color = ColorGradingContrast(color, useACES);
-	color = ColorGradeColorFilter(color);
-	color = max(color, 0.0);
-	color =	ColorGradeSplitToning(color, useACES);
-	color = ColorGradingChannelMixer(color);
-	color = max(color, 0.0);
-	color = ColorGradingShadowsMidtonesHighlights(color, useACES);
-	color = ColorGradingHueShift(color);
-	color = ColorGradingSaturation(color, useACES);
-	return max(useACES ? ACEScg_to_ACES(color) : color, 0.0);
-}
-
-float4 _ColorGradingLUTParameters;
-
-bool _ColorGradingLUTInLogC;
-
-float3 GetColorGradedLUT (float2 uv, bool useACES = false) {
-	float3 color = GetLutStripValue(uv, _ColorGradingLUTParameters);
-	return ColorGrade(_ColorGradingLUTInLogC ? LogCToLinear(color) : color, useACES);
-}
-
-float4 ColorGradingNonePassFragment (Varyings input) : SV_TARGET {
-	float3 color = GetColorGradedLUT(input.screenUV);
-	return float4(color, 1.0);
-}
-
-float4 ColorGradingACESPassFragment (Varyings input) : SV_TARGET {
-	float3 color = GetColorGradedLUT(input.screenUV, true);  // 对ACES映射使用ACES空间替代gramme空间
-	color = AcesTonemap(color);
-	return float4(color, 1.0);
-}
-
-float4 ColorGradingNeutralPassFragment (Varyings input) : SV_TARGET {
-	float3 color = GetColorGradedLUT(input.screenUV);
-	color = NeutralTonemap(color);
-	return float4(color, 1.0);
-}
-
-float4 ColorGradingReinhardPassFragment (Varyings input) : SV_TARGET {
-	float3 color = GetColorGradedLUT(input.screenUV);
-	color /= color + 1.0;
-	return float4(color, 1.0);
-}
-
-TEXTURE2D(_ColorGradingLUT);
-
-float3 ApplyColorGradingLUT (float3 color) {
-	return ApplyLut2D(
-		TEXTURE2D_ARGS(_ColorGradingLUT, sampler_linear_clamp),
-		saturate(_ColorGradingLUTInLogC ? LinearToLogC(color) : color),
-		_ColorGradingLUTParameters.xyz
-	);
-}
-
-float4 FinalPassFragment (Varyings input) : SV_TARGET {
-	float4 color = GetSourceWithLinear(input.screenUV);
-	color.rgb = ApplyColorGradingLUT(color.rgb);
-	return color;
-}
-
 #endif 

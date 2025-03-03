@@ -19,6 +19,10 @@
         ColorGradingACES,
         ColorGradingNeutral,
         ColorGradingReinhard,
-        Final
+        Final,
+        
+        SSRRaymarching,
+        SSRAddtive,
+        SSRBalance,
     }
 }

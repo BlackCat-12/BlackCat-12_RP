@@ -24,7 +24,7 @@ public class DrawNormalDepth
         _buffer.BeginSample(passName);
         _context = context;
         // 获取临时渲染纹理，包含24位深度缓冲区
-        _buffer.GetTemporaryRT(depthNormalId, camera.pixelWidth, camera.pixelHeight, 24, FilterMode.Point, RenderTextureFormat.ARGBHalf);
+        _buffer.GetTemporaryRT(depthNormalId, camera.pixelWidth, camera.pixelHeight, 24, FilterMode.Point, RenderTextureFormat.ARGB32);
 
         // 设置RenderTarget，仅绑定颜色缓冲区，深度自动使用该RT的深度部分
         _buffer.SetRenderTarget(
@@ -46,7 +46,7 @@ public class DrawNormalDepth
         context.DrawRenderers(cullingResults, ref drawSettings, ref filteringSettings);
     
         // 将临时纹理设置为全局纹理
-        _buffer.SetGlobalTexture(depthNormalId, depthNormalId);
+        //_buffer.SetGlobalTexture(depthNormalId, depthNormalId);
         _buffer.EndSample(passName);
         context.ExecuteCommandBuffer(_buffer);
         _buffer.Clear();

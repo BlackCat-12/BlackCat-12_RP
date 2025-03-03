@@ -13,6 +13,7 @@ public partial class CameraRenderer
     private CullingResults _cullingResults;
     private CommandBuffer _buffer = new CommandBuffer { name = bufferName };
     private bool useHDR;
+    private bool _usePostFX;
     
     // 实例化脚本
     PostFXStack postFXStack = new PostFXStack();
@@ -35,7 +36,7 @@ public partial class CameraRenderer
     {
         this._context = context;
         this._camera = camera;
-        bool usePostFX = _volumeManager.CheckEffectActive() && postFXSettings.usePostFx;  //只有当至少一个effect启动，且场景开启后处理选择
+        _usePostFX = _volumeManager.CheckEffectActive() && postFXSettings.usePostFx;  //只有当至少一个effect启动，且场景开启后处理选择
         
         PrepareBuffer();
         // 绘制UI等
@@ -70,7 +71,7 @@ public partial class CameraRenderer
         }
         
         
-        if (usePostFX)
+        if (_usePostFX)
         {
             _renderPostFXPrePass.Render(ref _cullingResults, _volumeManager.GetPostFXPrePasses());
             SwitchRenderTarget(frameBufferId);
@@ -114,7 +115,7 @@ public partial class CameraRenderer
         CameraClearFlags flags = _camera.clearFlags;
         
         // 若开启后处理，则将中间纹理设置为Camera的渲染目标
-        if (_volumeManager.CheckEffectActive() && postFXStack.isActive)
+        if (_usePostFX)
         {
             // 清除中间缓存区的原内容
             if (flags > CameraClearFlags.Color)
@@ -213,7 +214,7 @@ public partial class CameraRenderer
         {
             _drawNormalDepth.cleanup();
         }
-        if (_volumeManager.CheckEffectActive() && postFXStack.isActive)
+        if (_usePostFX)
         {
             postFXStack.Cleanup();
             _renderPostFXPrePass.Cleanup();

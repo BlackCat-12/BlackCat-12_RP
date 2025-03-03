@@ -75,45 +75,59 @@ Shader "Custom RP/Lit" {
             ENDCG
         }
 	
-		 Pass
+		Pass
         {
-        	Name "DrawDepthNormal"
-	        Tags { "RenderType" = "Opaque" "LightMode" = "DepthNormals" }
-            CGPROGRAM
+            Name "DepthNormals"
+            Tags { "LightMode" = "DepthNormals" } // URP 通过此标签识别法线深度Pass
+			ZWrite On ZTest LEqual
+			
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "UnityCG.cginc"
+            #include "../ShaderLibrary/Common.hlsl" 
 
-            struct v2f
+            struct Attributes
             {
-                float4 pos : SV_POSITION;
-                float3 normal : TEXCOORD0;
-				float3 positionVS : TEXCOORD1;
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
             };
 
-            struct Attributes {
-			    float3 positionOS : POSITION;
-			    float3 normal : NORMAL;
-			};
+            struct Varyings
+            {
+                float4 positionHCS : SV_POSITION;
+                float3 normalVS : TEXCOORD0; // 观察空间法线
+            	float rawDepth : TEXCOORD1; // 非线性深度（直接使用观察空间 Z）
+            };
 
-            v2f vert(Attributes v)
+            Varyings vert(Attributes input)
             {
-                v2f o;
-            	o.pos = UnityObjectToClipPos(v.positionOS);
-                o.positionVS = UnityObjectToViewPos(v.positionOS);
-                o.normal = UnityObjectToWorldNormal(v.normal);
-                return o;
+                Varyings output;
+                
+                // 顶点位置变换
+            	float4 positionCS = TransformObjectToHClip(input.positionOS);
+                output.positionHCS = positionCS;
+                
+                // 法线转换到观察空间
+                float3 normalWS = TransformObjectToWorldNormal(input.normalOS);
+                // 观察空间法线转换
+				float3 normalVS = mul((float3x3)UNITY_MATRIX_V, normalWS).xyz; // 世界空间转观察空间
+				output.normalVS = normalize(normalVS * 0.5 + 0.5);
+            	
+            	float depthbuffer = 1.0 - (positionCS.z / positionCS.w);
+            	output.rawDepth = depthbuffer;
+                return output;
             }
-            
-            float4 frag(v2f i) : SV_Target
+
+            half4 frag(Varyings input) : SV_Target
             {
-                float depth = -(i.positionVS.z * _ProjectionParams.w);
-            	float3 normal = normalize(mul((float3x3)unity_MatrixITMV, i.normal));
-                return float4(normal, depth);
+                // 法线归一化并映射到 [0,1]
+                float3 normal = normalize(input.normalVS);
+                float depth = input.rawDepth;
+                // 深度直接输出（已线性化）
+                return half4(normal, depth);
             }
-            ENDCG
+            ENDHLSL
         }
-        
 		Pass {
 			Tags {
 				"LightMode" = "ShadowCaster"
@@ -131,6 +145,5 @@ Shader "Custom RP/Lit" {
 			ENDHLSL
 		}
 	}
-
 	CustomEditor "CustomShaderGUI"
 }

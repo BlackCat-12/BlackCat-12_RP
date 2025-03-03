@@ -85,6 +85,7 @@ public class RenderPostFX_PrePass
         
         // 执行渲染
         _context.DrawRenderers(_cullingResults, ref drawSettings, ref filteringSettings);
+        _cmd.SetGlobalTexture(surfaceIdDepthId, surfaceIdDepthId);
     }
 
     void DrawNormalDepthTex()

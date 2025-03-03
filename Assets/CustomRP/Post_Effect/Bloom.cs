@@ -46,11 +46,7 @@ public class Bloom : VolumeComponent,IPostProcessComponent
     {
         return enabled.value;
     }
-
-    public void Prepare()
-    {
-        throw new NotImplementedException();
-    }
+    
 
     // TODO: effect构造函数修改
     private Bloom()

@@ -10,7 +10,8 @@ namespace CustomRP.Runtime.Volume
         
         public bool active = true;
         public static int fxSourceID = Shader.PropertyToID("_PostFXSource"),
-            fxSource2ID = Shader.PropertyToID("_PostFXSource2");  // // 源纹理
+            fxSource2ID = Shader.PropertyToID("_PostFXSource2"),
+            fxSource3ID = Shader.PropertyToID("_PostFXSource3");  // // 源纹理
               
         // 序列化存储effect的参数
         [HideInInspector]
@@ -21,6 +22,7 @@ namespace CustomRP.Runtime.Volume
         protected bool _useHDR = false;
         protected BoolParameter enabled = new BoolParameter(false);
         
+        // Draw调用会将from目标设置位fxsource全局纹理
         protected void Draw(RenderTargetIdentifier from, RenderTargetIdentifier to, PostFX_Pass pass, CommandBuffer buffer, Material material)
         {
             buffer.SetGlobalTexture(fxSourceID, from);  // 设置全局渲染源纹理
