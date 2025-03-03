@@ -25,6 +25,9 @@ float _Outline;
 float4 _DepthNormalTex_TexelSize;
 float4 _SurfaceIdDepthTex_TexelSize;
 float4 _SurfaceIdDepthDownSampleTex_TexelSize;
+float _OutlineDarkenFactor;
+float _OutlineLightenFactor;
+float _CheckEdge;
 float _DepthSensitivity;
 float _NormalSensitivity;
 float _DepthThreshold;
@@ -109,7 +112,7 @@ float4 GetSourceTexelSize () {
 
 float SampleSceneDepth(float2 screenUV)
 {
-    return 1 - SAMPLE_TEXTURE2D(_DepthNormalTex, my_point_clamp_sampler, screenUV).a;
+    return SAMPLE_TEXTURE2D(_DepthNormalTex, my_point_clamp_sampler, screenUV).a;
 }
 
 float3 SampleSceneNormal(float2 screenUV)
@@ -299,9 +302,9 @@ float4 DrawEdgePixelTex(Varyings input) : SV_TARGET
     float3 sourceTex = GetSourceWithPoint(input.screenUV);
     float3 outlineTex = SAMPLE_TEXTURE2D_LOD(_OutlineTex, my_point_clamp_sampler, input.screenUV, 0);
     
-    // 定义调整因子
-    float darkenFactor = 0.5; // 蓝色描边时的50%变暗
-    float lightenFactor = 0.5; // 红色描边时的50%变亮
+    // 使用可调节的参数代替固定值
+    float darkenFactor = _OutlineDarkenFactor;  // 蓝色描边变暗程度
+    float lightenFactor = _OutlineLightenFactor; // 红色描边变亮程度
     
     // 定义颜色阈值
     float threshold = 0.9;
@@ -319,11 +322,13 @@ float4 DrawEdgePixelTex(Varyings input) : SV_TARGET
     
     // 限制最终颜色范围
     finalColor = saturate(finalColor);
-    float outline = 1- (outlineTex.r + outlineTex.b);
-    float3 finalCol = outline * sourceTex;
-    float3 testCol =  outlineTex + finalCol;
+    float3 testCol =  outlineTex + finalColor;
     
-    return float4(testCol, 1.0);
+    
+    finalColor = (testCol * _CheckEdge) + (1 - _CheckEdge) * finalColor;
+    
+    
+    return float4(finalColor, 1.0);
 }
 
 //阈值Pass
@@ -721,6 +726,6 @@ half4 SSRPassFragment2(Varyings input) : SV_Target {
         if (stepSurfaceDepth < stepDepth && stepDepth < stepSurfaceDepth + _Thickness)  // 若步进到达目标 ，条件二限制进入厚度，防止步进过深
             return GetSourceWithLinear(uv2);  // 返回目标位置颜色
     }    
-    return half4(0, 0, 0, 1.0);  
+    return half4(rawDepth, rawDepth, rawDepth, 1.0);  
 }
 #endif 

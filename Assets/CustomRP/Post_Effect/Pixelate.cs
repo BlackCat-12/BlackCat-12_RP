@@ -4,19 +4,26 @@ using CustomRP.Runtime.Volume;
 using UnityEngine.Rendering;
 using BoolParameter = CustomRP.Runtime.Volume.BoolParameter;
 using FloatParameter = CustomRP.Runtime.Volume.FloatParameter;
+using IntParameter = CustomRP.Runtime.Volume.IntParameter;
 using VolumeComponent = CustomRP.Runtime.Volume.VolumeComponent;
 
 [Serializable]
 [CustomRP.Runtime.Volume.VolumeComponentMenu("Post-processing/Pixelate")]
 public class Pixelate : VolumeComponent,IPostProcessComponent
 {
-    public FloatParameter maxIteration = new FloatParameter(1f);
+    public IntParameter maxIteration = new IntParameter(2);
+    public FloatParameter outlineDarkenFactor = new FloatParameter(0.5f);
+    public FloatParameter outlineLightenFactor = new FloatParameter(0.5F);
+    public BoolParameter checkEdge = new BoolParameter(false);
 
     private static int surfaceIdDepthId ;
     private static int fxPixelDownSampleID,  // Pixel相关
         surfaceIdDepthDownSampleID ,
         outlineID ,
-        edgePixelTexID ;
+        edgePixelTexID,
+        outlineDarkenFactorID = Shader.PropertyToID("_OutlineDarkenFactor"),
+        outlineLightenFactorID = Shader.PropertyToID("_OutlineLightenFactor"),
+        checkEdgeID = Shader.PropertyToID("_CheckEdge");
    
     
     // public override void GetParameters()
@@ -63,6 +70,11 @@ public class Pixelate : VolumeComponent,IPostProcessComponent
         RenderTextureFormat format = _useHDR? RenderTextureFormat.DefaultHDR : RenderTextureFormat.Default;
         int downWidth = (int)(_camera.pixelWidth / maxIteration.value);
         int downHeight = (int)(_camera.pixelHeight / maxIteration.value);
+        buffer.SetGlobalFloat(outlineDarkenFactorID, outlineDarkenFactor.value); 
+        buffer.SetGlobalFloat(outlineLightenFactorID, outlineLightenFactor.value);
+
+        float check = checkEdge.value == true ? 1 : 0;
+        buffer.SetGlobalFloat(checkEdgeID, check);
         
         buffer.GetTemporaryRT(fxPixelDownSampleID, downWidth, downHeight,  // 过滤模式指当读取采样本贴图写入到其他贴图时的过滤
             32, FilterMode.Point, format);

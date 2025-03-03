@@ -82,7 +82,7 @@ public class SSR :  VolumeComponent,IPostProcessComponent
         
         using (new ProfilingScope(cmd, mProfilingSampler)) {
             // SSR
-            Draw(fxSourceID, fxSource2ID, PostFX_Pass.CopyWithPoint, cmd, material);
+            Draw(fxSourceID, fxSource2ID, PostFX_Pass.SSRRaymarching, cmd, material);
             // Horizontal Blur
             // cmd.SetGlobalVector(mBlurRadiusID, new Vector4(BlurRadius.value, 0.0f, 0.0f, 0.0f));
             // Draw(fxSource2ID, fxSource3ID, PostFX_Pass.BloomHorizontal,cmd, material);

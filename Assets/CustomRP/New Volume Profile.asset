@@ -1,6 +1,47 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-7667049276481063783
+--- !u!114 &-3522899045536559287
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02a1315c777fe894ebe5fa75359814ee, type: 3}
+  m_Name: Bloom
+  m_EditorClassIdentifier: 
+  active: 0
+  displayName: 
+  intensity:
+    overrideState: 0
+    m_Value: 1
+  threshold1:
+    overrideState: 0
+    m_Value: 2
+  thresholdKnee:
+    overrideState: 0
+    m_Value: 2
+  maxIteration:
+    overrideState: 0
+    m_Value: 2
+  downScaleLimit:
+    overrideState: 0
+    m_Value: 1
+  bicubicUpsampling:
+    overrideState: 0
+    m_Value: 1
+  fadeFireflies:
+    overrideState: 0
+    m_Value: 0
+  mode:
+    overrideState: 0
+    m_Value: 1
+  scatter:
+    overrideState: 0
+    m_Value: 0.5
+--- !u!114 &-2123280038369879227
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -68,5 +109,32 @@ MonoBehaviour:
   m_Name: New Volume Profile
   m_EditorClassIdentifier: 
   components:
-  - {fileID: -7667049276481063783}
-  ProfilePostFXPrePasses: 
+  - {fileID: 3839724508906507848}
+  - {fileID: -3522899045536559287}
+  ProfilePostFXPrePasses: 01000000
+--- !u!114 &3839724508906507848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 945d5a9afa2b7f841aa79ac3fbd02d2c, type: 3}
+  m_Name: Pixelate
+  m_EditorClassIdentifier: 
+  active: 1
+  displayName: 
+  maxIteration:
+    overrideState: 0
+    m_Value: 2
+  outlineDarkenFactor:
+    overrideState: 0
+    m_Value: 0.5
+  outlineLightenFactor:
+    overrideState: 0
+    m_Value: 0.5
+  checkEdge:
+    overrideState: 0
+    m_Value: 0

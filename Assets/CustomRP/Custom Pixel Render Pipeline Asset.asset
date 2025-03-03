@@ -32,7 +32,7 @@ MonoBehaviour:
     usePostFx: 1
     useHDR: 1
     PostFXSettings: {fileID: 11400000, guid: 9f8afcc33b72a714c88253518d44412e, type: 2}
-    needDepthNormal: 1
+    needDepthNormal: 0
   _deferredRenderingSettings:
     useDeferredRender: 0
     specularIBL: {fileID: 0}
